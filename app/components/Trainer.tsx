@@ -12,8 +12,9 @@ import {
   type TrainingOutcome,
   type TrainingRun,
 } from "@/lib/l2s/training";
+import { useMessages } from "../i18n/context";
 import type { LoadRequest } from "./Visualizer";
-import { Button, FileButton, inputClass, Panel, Slider, selectClass, Stat } from "./ui";
+import { Button, FileButton, inputClass, Notice, Panel, Slider, selectClass, Stat } from "./ui";
 
 const MAX_LOG_LINES = 2000;
 
@@ -24,6 +25,8 @@ export default function Trainer({
 }: {
   onOpen: (request: LoadRequest) => void;
 }) {
+  const t = useMessages();
+  const tr = t.trainer;
   const [sessions, setSessions] = useState("100");
   const [snakes, setSnakes] = useState("1");
   const [noLearning, setNoLearning] = useState(false);
@@ -72,7 +75,7 @@ export default function Trainer({
       setInput({ name, qvalues: parseQValues(text, stateCount) });
       setError(null);
     } catch (err) {
-      setError(`${name}: ${(err as Error).message}`);
+      setError(`${name}: ${t.error(err)}`);
     }
   };
 
@@ -80,15 +83,15 @@ export default function Trainer({
     const sessionCount = Math.floor(Number(sessions));
     const snakeCount = Math.floor(Number(snakes));
     if (!(sessionCount >= 1)) {
-      setError("Sessions must be a positive whole number.");
+      setError(tr.sessionsError);
       return;
     }
     if (!(snakeCount >= 1)) {
-      setError("Snakes must be a positive whole number.");
+      setError(tr.snakesError);
       return;
     }
     if (snakeCount > MAX_SNAKES) {
-      setError(`Too many snakes (${snakeCount}). Maximum value is ${MAX_SNAKES}.`);
+      setError(tr.tooManySnakes(snakeCount, MAX_SNAKES));
       return;
     }
 
@@ -100,9 +103,9 @@ export default function Trainer({
     setProgress({ done: 0, total: sessionCount * snakeCount, snakesDone: 0 });
     setStatus("running");
 
-    if (input) pushLog(`Loaded model from ${input.name}.`);
+    if (input) pushLog(tr.loadedModel(input.name));
 
-    const prefix = (job: number) => (snakeCount > 1 ? `[snake ${job + 1}] ` : "");
+    const prefix = (job: number) => (snakeCount > 1 ? tr.snakePrefix(job + 1) : "");
     const run = startTraining(
       {
         sessions: sessionCount,
@@ -111,9 +114,10 @@ export default function Trainer({
         noLearning,
         verbose,
         agentParams: params,
+        locale: t.locale,
       },
       (job, lines, dropped) => {
-        if (dropped) pushLog(`${prefix(job)}… ${dropped} lines omitted …`);
+        if (dropped) pushLog(prefix(job) + tr.linesOmitted(dropped));
         pushLog(...lines.map((l) => prefix(job) + l));
       },
     );
@@ -124,7 +128,7 @@ export default function Trainer({
         if (runRef.current !== run) return;
         if (snakeCount > 1) {
           const best = result.snakes[result.bestIndex];
-          pushLog(`Best snake: #${result.bestIndex + 1} (size ${best.longestSize}).`);
+          pushLog(tr.bestSnake(result.bestIndex + 1, best.longestSize));
         }
         setLogs([...logRef.current]);
         setProgress((p) => ({ ...p, done: p.total, snakesDone: snakeCount }));
@@ -133,7 +137,7 @@ export default function Trainer({
       },
       (err: Error) => {
         if (runRef.current !== run || err instanceof TrainingCancelled) return;
-        setError(err.message);
+        setError(t.error(err));
         setLogs([...logRef.current]);
         setStatus("error");
       },
@@ -142,7 +146,7 @@ export default function Trainer({
 
   const cancel = () => {
     runRef.current?.cancel();
-    pushLog("Training cancelled.");
+    pushLog(tr.cancelled);
     setLogs([...logRef.current]);
     setStatus("cancelled");
   };
@@ -150,15 +154,16 @@ export default function Trainer({
   const running = status === "running";
   const pct = progress.total ? (progress.done / progress.total) * 100 : 0;
   const best = outcome ? outcome.snakes[outcome.bestIndex] : null;
-  const snakeLabel = outcome && outcome.snakes.length > 1 ? `snake #${outcome.bestIndex + 1}` : "trained model";
+  const snakeLabel =
+    outcome && outcome.snakes.length > 1 ? tr.snakeName(outcome.bestIndex + 1) : tr.trainedModel;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
       <div className="flex flex-col gap-4">
-        <Panel title="Training run">
+        <Panel title={tr.runPanel}>
           <div className="flex flex-col gap-3">
-            <label className="block text-sm text-zinc-700 dark:text-zinc-300">
-              Sessions per snake
+            <label className="block text-sm">
+              {tr.sessionsPerSnake}
               <input
                 className={`${inputClass} mt-1`}
                 type="number"
@@ -168,8 +173,8 @@ export default function Trainer({
                 onChange={(e) => setSessions(e.target.value)}
               />
             </label>
-            <label className="block text-sm text-zinc-700 dark:text-zinc-300">
-              Snakes trained in parallel
+            <label className="block text-sm">
+              {tr.snakesInParallel}
               <input
                 className={`${inputClass} mt-1`}
                 type="number"
@@ -179,13 +184,13 @@ export default function Trainer({
                 disabled={running}
                 onChange={(e) => setSnakes(e.target.value)}
               />
-              <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">
-                Each snake learns independently in a Web Worker; only the best one is kept.
+              <span className="mt-1 block text-[13px] leading-snug text-muted">
+                {tr.snakesHelp}
               </span>
             </label>
 
-            <div className="text-sm text-zinc-700 dark:text-zinc-300">
-              Starting Q values
+            <div className="text-sm">
+              {tr.startingQValues}
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <select
                   className={selectClass}
@@ -197,12 +202,12 @@ export default function Trainer({
                     try {
                       loadInput(await fetchText(preset.url), preset.name);
                     } catch (err) {
-                      setError((err as Error).message);
+                      setError(t.error(err));
                     }
                   }}
-                  aria-label="Start from a bundled model"
+                  aria-label={tr.bundledLabel}
                 >
-                  <option value="">Bundled…</option>
+                  <option value="">{tr.bundled}</option>
                   {PRESET_MODELS.map((p) => (
                     <option key={p.name} value={p.name}>
                       {p.name}
@@ -210,46 +215,46 @@ export default function Trainer({
                   ))}
                 </select>
                 <FileButton accept=".qval,.txt,text/plain" onText={loadInput} disabled={running}>
-                  File…
+                  {tr.file}
                 </FileButton>
                 {input && (
                   <Button variant="ghost" disabled={running} onClick={() => setInput(null)}>
-                    Clear
+                    {tr.clear}
                   </Button>
                 )}
               </div>
-              <span className="mt-1 block font-mono text-xs text-zinc-500 dark:text-zinc-400">
-                {input ? input.name : "all zeros (fresh model)"}
+              <span className="mt-1 block text-[13px] italic text-muted">
+                {input ? input.name : tr.freshModel}
               </span>
             </div>
 
-            <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+            <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={noLearning}
                 disabled={running}
                 onChange={(e) => setNoLearning(e.target.checked)}
-                className="accent-zinc-700 dark:accent-zinc-300"
+                className="accent-[var(--ink)]"
               />
-              No learning (don&apos;t update Q values)
+              {tr.noLearning}
             </label>
-            <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+            <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={verbose}
                 disabled={running}
                 onChange={(e) => setVerbose(e.target.checked)}
-                className="accent-zinc-700 dark:accent-zinc-300"
+                className="accent-[var(--ink)]"
               />
-              Verbose output
+              {tr.verbose}
             </label>
           </div>
         </Panel>
 
-        <Panel title="Agent parameters">
+        <Panel title={tr.agentPanel}>
           <div className="flex flex-col gap-3">
             <Slider
-              label="Learning rate"
+              label={t.params.learningRate}
               min={0}
               max={0.5}
               step={0.05}
@@ -257,7 +262,7 @@ export default function Trainer({
               onChange={(v) => setParams((p) => ({ ...p, learningRate: v }))}
             />
             <Slider
-              label="Exploration rate"
+              label={t.params.explorationRate}
               min={0}
               max={1}
               step={0.05}
@@ -265,7 +270,7 @@ export default function Trainer({
               onChange={(v) => setParams((p) => ({ ...p, explorationRate: v }))}
             />
             <Slider
-              label="Reward decay rate"
+              label={t.params.decay}
               min={0}
               max={1}
               step={0.05}
@@ -278,46 +283,41 @@ export default function Trainer({
         <div className="flex gap-2">
           {running ? (
             <Button variant="danger" onClick={cancel} className="flex-1">
-              Cancel
+              {tr.cancel}
             </Button>
           ) : (
             <Button variant="primary" onClick={start} className="flex-1">
-              Start training
+              {tr.start}
             </Button>
           )}
         </div>
         {error && (
-          <p role="alert" className="rounded bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:bg-rose-500/10 dark:text-rose-300">
-            {error}
-          </p>
+          <Notice kind="error">{error}</Notice>
         )}
       </div>
 
       <div className="flex min-w-0 flex-col gap-4">
-        <Panel title="Progress">
-          <div className="h-2 overflow-hidden rounded-sm bg-white dark:bg-zinc-800">
+        <Panel title={tr.progressPanel}>
+          <div className="h-1.5 overflow-hidden rounded-sm bg-paper">
             <div
-              className="h-full bg-emerald-600 transition-[width] duration-150 dark:bg-emerald-500"
+              className="h-full bg-ink transition-[width] duration-150"
               style={{ width: `${pct}%` }}
             />
           </div>
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label="Status" value={<span className="text-base">{status}</span>} />
-            <Stat label="Episodes" value={`${progress.done} / ${progress.total}`} />
-            <Stat label="Snakes done" value={progress.snakesDone} />
-            <Stat
-              label="Time"
-              value={outcome ? `${(outcome.elapsedMs / 1000).toFixed(1)}s` : "—"}
-            />
+            <Stat label={tr.status} value={<span className="text-base">{tr.statuses[status]}</span>} />
+            <Stat label={tr.episodes} value={`${progress.done} / ${progress.total}`} />
+            <Stat label={tr.snakesDone} value={progress.snakesDone} />
+            <Stat label={tr.time} value={outcome ? tr.shortSeconds(outcome.elapsedMs) : "-"} />
           </div>
         </Panel>
 
         {outcome && best && (
-          <Panel title="Result">
+          <Panel title={tr.resultPanel}>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Stat label="Longest size" value={best.longestSize} />
-              <Stat label="Longest session" value={best.longestLife} />
-              <Stat label="Best replay moves" value={best.replay?.inputs.length ?? "—"} />
+              <Stat label={tr.longestSize} value={best.longestSize} />
+              <Stat label={tr.longestSession} value={best.longestLife} />
+              <Stat label={tr.bestReplayMoves} value={best.replay?.inputs.length ?? "-"} />
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <Button
@@ -327,30 +327,30 @@ export default function Trainer({
                   onOpen({ source: snakeLabel, qvalues: best.qvalues, replay: best.replay ?? undefined })
                 }
               >
-                Watch best replay
+                {tr.watchBest}
               </Button>
               <Button onClick={() => onOpen({ source: snakeLabel, qvalues: best.qvalues })}>
-                Use Q values in visualizer
+                {tr.useQValues}
               </Button>
               <Button onClick={() => downloadText("learn2slither.qval", formatQValues(best.qvalues))}>
-                Download .qval
+                {tr.downloadQval}
               </Button>
               <Button
                 disabled={!best.replay}
                 onClick={() => best.replay && downloadText("learn2slither.rpl", formatReplay(best.replay))}
               >
-                Download .rpl
+                {tr.downloadRpl}
               </Button>
             </div>
 
             {outcome.snakes.length > 1 && (
-              <div className="mt-4 max-h-56 overflow-auto rounded bg-white dark:bg-zinc-950">
+              <div className="mt-4 max-h-56 overflow-auto rounded-sm bg-paper">
                 <table className="w-full text-left text-sm tabular-nums">
-                  <thead className="sticky top-0 bg-white text-xs text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+                  <thead className="sticky top-0 bg-paper text-xs text-muted">
                     <tr>
-                      <th className="px-3 py-1.5 font-medium">Snake</th>
-                      <th className="px-3 py-1.5 font-medium">Longest size</th>
-                      <th className="px-3 py-1.5 font-medium">Longest session</th>
+                      <th className="px-3 py-1.5 font-medium">{tr.snake}</th>
+                      <th className="px-3 py-1.5 font-medium">{tr.longestSize}</th>
+                      <th className="px-3 py-1.5 font-medium">{tr.longestSession}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -359,8 +359,8 @@ export default function Trainer({
                         key={i}
                         className={
                           i === outcome.bestIndex
-                            ? "bg-emerald-50 dark:bg-emerald-500/10"
-                            : "border-t border-zinc-100 dark:border-zinc-800"
+                            ? "border-t border-rule font-semibold text-accent"
+                            : "border-t border-rule"
                         }
                       >
                         <td className="px-3 py-1">#{i + 1}</td>
@@ -375,12 +375,12 @@ export default function Trainer({
           </Panel>
         )}
 
-        <Panel title="Output" className="min-w-0">
+        <Panel title={tr.outputPanel} className="min-w-0">
           <pre
             ref={logBoxRef}
-            className="h-72 overflow-auto rounded bg-zinc-950 p-3 font-mono text-xs leading-relaxed text-zinc-200"
+            className="h-72 overflow-auto rounded-sm bg-paper p-3 font-mono text-xs leading-relaxed text-ink"
           >
-            {logs.length ? logs.join("\n") : "Output will appear here."}
+            {logs.length ? logs.join("\n") : tr.outputEmpty}
           </pre>
         </Panel>
       </div>

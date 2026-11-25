@@ -1,4 +1,5 @@
 import type { AgentParams, QTable } from "./agent";
+import type { Locale } from "../i18n/core";
 import type { Replay } from "./qlearner";
 import type { TrainRequest, TrainResponse } from "./train.worker";
 
@@ -13,6 +14,8 @@ export interface TrainingOptions {
   verbose: boolean;
   agentParams: AgentParams;
   maxEpoch?: number;
+  /** Language of the log lines. */
+  locale: Locale;
 }
 
 export interface SnakeResult {
@@ -91,6 +94,7 @@ export function startTraining(options: TrainingOptions, onLog?: TrainingLogger):
       noLearning: options.noLearning,
       verbose: options.verbose,
       agentParams: options.agentParams,
+      locale: options.locale,
     } satisfies TrainRequest);
   };
 

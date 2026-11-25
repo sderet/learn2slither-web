@@ -1,6 +1,7 @@
 import type { QTable } from "./agent";
 import type { Vec } from "./constants";
 import type { Replay } from "./qlearner";
+import { L2sError } from "../i18n/core";
 
 /** Format a number like numpy's default savetxt format, `%.18e`. */
 function formatScientific(value: number): string {
@@ -23,7 +24,7 @@ function parseNumber(token: string): number {
   if (lower === "inf" || lower === "+inf" || lower === "infinity") return Infinity;
   if (lower === "-inf" || lower === "-infinity") return -Infinity;
   const value = Number(token);
-  if (Number.isNaN(value)) throw new Error(`Invalid number in Q values file: "${token}"`);
+  if (Number.isNaN(value)) throw new L2sError("invalidNumber", { token });
   return value;
 }
 
@@ -36,13 +37,15 @@ export function parseQValues(text: string, expectedRows: number, expectedColumns
     .map((line) => line.split(/\s+/).map(parseNumber));
 
   if (rows.length !== expectedRows) {
-    throw new Error(`Expected ${expectedRows} rows of Q values, found ${rows.length}.`);
+    throw new L2sError("rowCount", { expected: expectedRows, found: rows.length });
   }
   rows.forEach((row, i) => {
     if (row.length !== expectedColumns) {
-      throw new Error(
-        `Row ${i + 1} has ${row.length} values, expected ${expectedColumns}.`,
-      );
+      throw new L2sError("columnCount", {
+        row: i + 1,
+        found: row.length,
+        expected: expectedColumns,
+      });
     }
   });
   return rows;
@@ -54,7 +57,7 @@ export function parseReplay(text: string): Replay {
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error("Replay file is not valid JSON.");
+    throw new L2sError("replayJson", {});
   }
   const r = data as Partial<Replay>;
   if (
@@ -64,11 +67,11 @@ export function parseReplay(text: string): Replay {
     !Array.isArray(r.inputs) ||
     typeof r.seed !== "number"
   ) {
-    throw new Error("Replay file is missing starting_state, inputs or seed.");
+    throw new L2sError("replayFields", {});
   }
   const inputs = r.inputs.map((input) => {
     if (!Array.isArray(input) || input.length !== 2) {
-      throw new Error("Replay inputs must be [dx, dy] pairs.");
+      throw new L2sError("replayInputs", {});
     }
     return [Number(input[0]), Number(input[1])] as Vec;
   });

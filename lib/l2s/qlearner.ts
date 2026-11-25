@@ -1,6 +1,7 @@
 import { Agent, type AgentParams, type QTable } from "./agent";
 import { Board } from "./board";
-import { ACTIONS_NAMES, directionIndex, type Vec } from "./constants";
+import { directionIndex, type Vec } from "./constants";
+import { LEARNER_MESSAGES, type LearnerMessages } from "../i18n/core";
 import { Interpreter, type Logger } from "./interpreter";
 
 /** Contents of a .rpl file, compatible with the Python version. */
@@ -24,6 +25,8 @@ export interface QlearnerOptions {
   noLearning?: boolean;
   verbose?: boolean;
   log?: Logger;
+  /** Wording of the log lines (English by default). */
+  messages?: LearnerMessages;
 }
 
 export interface TrainingResult {
@@ -43,6 +46,7 @@ export class Qlearner {
   startingState: string[][];
   inputs: Vec[] = [];
   private log: Logger;
+  private messages: LearnerMessages;
 
   constructor(options: QlearnerOptions = {}) {
     this.board = options.board ?? new Board();
@@ -51,6 +55,7 @@ export class Qlearner {
     this.noLearning = options.noLearning ?? false;
     this.verbose = options.verbose ?? false;
     this.log = options.log ?? ((line) => console.log(line));
+    this.messages = options.messages ?? LEARNER_MESSAGES.en;
 
     // Lowest possible number of states without repeats
     this.agent.states = options.qvalues
@@ -69,7 +74,7 @@ export class Qlearner {
     const [action, direction] = this.agent.chooseDirection(state);
     this.inputs.push(direction);
 
-    if (this.verbose) this.log(`${ACTIONS_NAMES[directionIndex(direction)]}\n`);
+    if (this.verbose) this.log(`${this.messages.actions[directionIndex(direction)]}\n`);
 
     const typeEaten = this.board.moveSnake(direction);
 
@@ -107,13 +112,13 @@ export class Qlearner {
     t.episodes++;
 
     if (epoch > t.longestLife) {
-      if (this.verbose) this.log(`Newest best lifetime: ${epoch}`);
+      if (this.verbose) this.log(this.messages.newBestLifetime(epoch));
       t.longestLife = epoch;
     }
     const size = this.board.snakePos.length;
-    if (this.verbose) this.log(`Length: ${size}`);
+    if (this.verbose) this.log(this.messages.length(size));
     if (size > t.longestSize) {
-      if (this.verbose) this.log(`Newest longest size: ${size}`);
+      if (this.verbose) this.log(this.messages.newLongestSize(size));
       t.longestSize = size;
       t.best = {
         score: t.longestSize,
@@ -126,7 +131,7 @@ export class Qlearner {
 
     this.resetBoard();
     t.epoch = 0;
-    if (this.verbose) this.log(`Episode ${t.episodes}`);
+    if (this.verbose) this.log(this.messages.episode(t.episodes));
     return size;
   }
 
@@ -159,10 +164,7 @@ export class Qlearner {
   loop(onEpisode?: (episodes: number, size: number) => void): TrainingResult {
     this.trainSteps(Infinity, onEpisode);
     const { longestSize, longestLife } = this.training;
-    this.log(
-      `Training finished for ${this.maxSessions} sessions. ` +
-        `Longest size: ${longestSize} Longest session: ${longestLife}`,
-    );
+    this.log(this.messages.trainingFinished(this.maxSessions, longestSize, longestLife));
     return this.trainingResult;
   }
 }

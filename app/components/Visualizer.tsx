@@ -4,22 +4,24 @@ import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref
 import { DEFAULT_AGENT_PARAMS, type AgentParams, type QTable } from "@/lib/l2s/agent";
 import { Board } from "@/lib/l2s/board";
 import type { Action, Vec } from "@/lib/l2s/constants";
-import { COLORS, drawBoard } from "@/lib/l2s/draw";
+import { CSS_COLORS, drawBoard } from "@/lib/l2s/draw";
 import { downloadText, formatQValues, parseQValues, parseReplay } from "@/lib/l2s/files";
 import { fetchText, PRESET_MODELS, PRESET_REPLAYS } from "@/lib/l2s/presets";
 import { Qlearner, type Replay } from "@/lib/l2s/qlearner";
-import { Button, FileButton, FoldablePanel, Panel, Slider, Stat, selectClass } from "./ui";
+import { useMessages } from "../i18n/context";
+import { Button, Caption, FileButton, FoldablePanel, Notice, Panel, Slider, Stat, selectClass } from "./ui";
 
-const FPS_OPTIONS = ["Unlimited", "120", "60", "30", "15", "5", "1"];
+/** The first option ("unlimited") is labelled in the page language. */
+const FPS_OPTIONS = ["unlimited", "120", "60", "30", "15", "5", "1"];
 const DEFAULT_FPS_INDEX = FPS_OPTIONS.indexOf("15");
 const FRAME_MS = [0, 1000 / 120, 1000 / 60, 1000 / 30, 1000 / 15, 1000 / 5, 1000];
 const UNLIMITED_BUDGET_MS = 12;
 
-const MOVES: { label: string; code: Action; vec: Vec; key: string; arrow: string }[] = [
-  { label: "Up", code: "U", vec: [0, -1], key: "ArrowUp", arrow: "↑" },
-  { label: "Down", code: "D", vec: [0, 1], key: "ArrowDown", arrow: "↓" },
-  { label: "Left", code: "L", vec: [-1, 0], key: "ArrowLeft", arrow: "←" },
-  { label: "Right", code: "R", vec: [1, 0], key: "ArrowRight", arrow: "→" },
+const MOVES: { code: Action; vec: Vec; key: string; arrow: string }[] = [
+  { code: "U", vec: [0, -1], key: "ArrowUp", arrow: "↑" },
+  { code: "D", vec: [0, 1], key: "ArrowDown", arrow: "↓" },
+  { code: "L", vec: [-1, 0], key: "ArrowLeft", arrow: "←" },
+  { code: "R", vec: [1, 0], key: "ArrowRight", arrow: "→" },
 ];
 
 export interface LoadRequest {
@@ -51,6 +53,8 @@ export default function Visualizer({
   active: boolean;
   ref?: Ref<VisualizerHandle>;
 }) {
+  const t = useMessages();
+  const v = t.visualizer;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modelRef = useRef<Qlearner | null>(null);
   /** Remaining replay inputs, or null when not in replay mode. */
@@ -67,7 +71,8 @@ export default function Visualizer({
   const [params, setParams] = useState<AgentParams>(DEFAULT_AGENT_PARAMS);
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [replayMode, setReplayMode] = useState(false);
-  const [modelName, setModelName] = useState("untrained (all zeros)");
+  /** Name of the loaded Q values; null for the untrained all-zero model. */
+  const [modelName, setModelName] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
 
   // ---------------------------------------------------------------- drawing
@@ -170,7 +175,13 @@ export default function Visualizer({
     if (!canvas) return;
     const observer = new ResizeObserver(() => draw());
     observer.observe(canvas);
-    return () => observer.disconnect();
+    // The board colours follow the light/dark theme.
+    const theme = matchMedia("(prefers-color-scheme: dark)");
+    theme.addEventListener("change", draw);
+    return () => {
+      observer.disconnect();
+      theme.removeEventListener("change", draw);
+    };
   }, [draw, render]);
 
   const updateParams = (patch: Partial<AgentParams>) => {
@@ -264,13 +275,13 @@ export default function Visualizer({
       try {
         model.agent.states = parseQValues(text, model.interpreter.stateCount);
         setModelName(name);
-        setNotice({ kind: "info", text: `Loaded Q values from ${name}.` });
+        setNotice({ kind: "info", text: v.loadedQValues(name) });
         render();
       } catch (err) {
-        setNotice({ kind: "error", text: `${name}: ${(err as Error).message}` });
+        setNotice({ kind: "error", text: `${name}: ${t.error(err)}` });
       }
     },
-    [render],
+    [render, t, v],
   );
 
   /** Start over: all-zero Q values, a fresh board and cleared stats. */
@@ -282,10 +293,10 @@ export default function Visualizer({
     replayBoardRef.current = false;
     model.resetBoard(new Board());
     statsRef.current = { episodes: 0, bestLength: 0, steps: 0 };
-    setModelName("untrained (all zeros)");
-    setNotice({ kind: "info", text: "Reset Q values to 0 and started a new board." });
+    setModelName(null);
+    setNotice({ kind: "info", text: v.resetNotice });
     render();
-  }, [exitReplay, render]);
+  }, [exitReplay, render, v]);
 
   const startReplay = useCallback(
     (replay: Replay, name: string) => {
@@ -296,13 +307,10 @@ export default function Visualizer({
       replayRef.current = replay.inputs.map((v) => [v[0], v[1]] as Vec);
       replayBoardRef.current = true;
       setReplayMode(true);
-      setNotice({
-        kind: "info",
-        text: `Replay ${name}: score ${replay.score}, ${replay.inputs.length} moves. Press Resume or Step.`,
-      });
+      setNotice({ kind: "info", text: v.replayNotice(name, replay.score, replay.inputs.length) });
       render();
     },
-    [render],
+    [render, v],
   );
 
   const loadReplay = useCallback(
@@ -310,10 +318,10 @@ export default function Visualizer({
       try {
         startReplay(parseReplay(text), name);
       } catch (err) {
-        setNotice({ kind: "error", text: `${name}: ${(err as Error).message}` });
+        setNotice({ kind: "error", text: `${name}: ${t.error(err)}` });
       }
     },
-    [startReplay],
+    [startReplay, t],
   );
 
   const loadPreset = async (url: string, name: string, kind: "model" | "replay") => {
@@ -322,7 +330,7 @@ export default function Visualizer({
       if (kind === "model") loadQValues(text, name);
       else loadReplay(text, name);
     } catch (err) {
-      setNotice({ kind: "error", text: (err as Error).message });
+      setNotice({ kind: "error", text: t.error(err) });
     }
   };
 
@@ -338,11 +346,11 @@ export default function Visualizer({
       if (request.replay) {
         startReplay(request.replay, request.source);
       } else {
-        setNotice({ kind: "info", text: `Loaded Q values from ${request.source}.` });
+        setNotice({ kind: "info", text: v.loadedQValues(request.source) });
         render();
       }
     },
-  }), [render, startReplay]);
+  }), [render, startReplay, v]);
 
   // ---------------------------------------------------------------------- UI
 
@@ -353,23 +361,24 @@ export default function Visualizer({
   const TONES = {
     // Shares its value with another direction (takes priority over "best")
     tied: {
-      idle: "bg-yellow-100 text-yellow-900 dark:bg-yellow-500/20 dark:text-yellow-200",
-      pressed: "active:bg-yellow-200 dark:active:bg-yellow-500/30",
+      idle: "bg-marker text-marker-ink",
+      pressed: "active:brightness-95",
     },
     // The single highest value: the move the agent picks when not exploring
     best: {
-      idle: "bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-200",
-      pressed: "active:bg-emerald-200 dark:active:bg-emerald-500/30",
+      idle: "bg-paper text-accent underline decoration-2 underline-offset-4",
+      pressed: "active:bg-paper-3",
     },
     plain: {
-      idle: "bg-white text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
-      pressed: "active:bg-zinc-200 dark:active:bg-zinc-700",
+      idle: "bg-paper text-ink",
+      pressed: "active:bg-paper-3",
     },
   };
 
   /** A direction's Q value, doubling as the button that moves the snake that way. */
   const qCell = (index: number) => {
     const move = MOVES[index];
+    const label = t.moves[move.code];
     const value = qs[index];
     const tied = value !== null && qs.some((other, i) => i !== index && other === value);
     const tone = TONES[tied ? "tied" : value !== null && value === bestQ ? "best" : "plain"];
@@ -378,56 +387,51 @@ export default function Visualizer({
         type="button"
         onClick={() => moveSnake(move.vec)}
         aria-disabled={running}
-        aria-label={`Move ${move.label} (Q value ${value === null ? "none" : formatQ(value)})`}
-        title={running ? `Q value for ${move.label}` : `Move ${move.label}`}
-        className={`rounded px-2 py-1.5 text-center font-mono text-xs tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500 ${
+        aria-label={v.moveLabel(label, value === null ? v.none : formatQ(value))}
+        title={running ? v.qTitle(label) : v.moveTitle(label)}
+        className={`rounded-sm px-2 py-1.5 text-center text-sm tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
           tone.idle
         } ${running ? "cursor-default" : tone.pressed}`}
       >
         <div className="text-[11px] opacity-60">
-          {move.arrow} {move.label}
+          {move.arrow} {label}
         </div>
-        {value === null ? "—" : formatQ(value)}
+        {value === null ? "-" : formatQ(value)}
       </button>
     );
   };
 
-  const overlay = snap?.lost
-    ? "Game over — Step or Resume for a new board"
+  const caption = snap?.lost
+    ? v.captionLost
     : !running && replayMode
-      ? "Replay loaded"
+      ? v.captionReplay
       : !running
-        ? "Paused"
-        : null;
+        ? v.captionPaused
+        : v.captionRunning;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="flex flex-col gap-4">
-        <div className="relative mx-auto w-full max-w-[560px]">
+        <figure className="mx-auto w-full max-w-[max(320px,min(560px,calc(100svh-28rem)))]">
           <canvas
             ref={canvasRef}
-            className="aspect-square w-full rounded-md"
-            style={{ background: COLORS.background }}
-            aria-label="Snake board"
+            className="aspect-square w-full rounded-sm border border-muted bg-board-bg"
+            aria-label={v.boardLabel}
           />
-          {overlay && (
-            <div className="pointer-events-none absolute left-3 top-3 rounded bg-black/60 px-2 py-1 text-xs font-medium text-white">
-              {overlay}
-            </div>
-          )}
-          {replayMode && snap?.replayLeft != null && (
-            <div className="pointer-events-none absolute right-3 top-3 rounded bg-sky-500/80 px-2 py-1 text-xs font-medium text-white">
-              Replay · {snap.replayLeft} moves left
-            </div>
-          )}
-        </div>
+          <Caption
+            label={v.figure}
+            aside={replayMode && snap?.replayLeft != null && v.replayLeft(snap.replayLeft)}
+          >
+            {caption}
+          </Caption>
+        </figure>
 
         <div className="mx-auto flex w-full max-w-[560px] flex-wrap gap-2">
           <Button variant="primary" onClick={() => setRunning((r) => !r)} className="min-w-24">
-            {running ? "Pause" : "Resume"}
+            {running ? v.pause : v.resume}
           </Button>
-          <Button onClick={step} disabled={running} title="Enter">
-            Step
+          <Button onClick={step} disabled={running} title={v.enterKey}>
+            {v.step}
           </Button>
           <Button
             onClick={() => {
@@ -437,13 +441,13 @@ export default function Visualizer({
               render();
             }}
           >
-            Reset board
+            {v.resetBoard}
           </Button>
-          <Button onClick={resetAll} title="Reset Q values to 0 and start a new board">
-            Reset all
+          <Button onClick={resetAll} title={v.resetAllTitle}>
+            {v.resetAll}
           </Button>
           <Button onClick={toggleLearning}>
-            {learning ? "Stop learning" : "Resume learning"}
+            {learning ? v.stopLearning : v.resumeLearning}
           </Button>
           {replayMode && (
             <Button
@@ -454,41 +458,34 @@ export default function Visualizer({
                 render();
               }}
             >
-              Exit replay mode
+              {v.exitReplay}
             </Button>
           )}
         </div>
 
         {notice && (
-          <p
-            role="status"
-            className={`mx-auto w-full max-w-[560px] rounded px-3 py-2 text-sm ${
-              notice.kind === "error"
-                ? "bg-rose-50 text-rose-800 dark:bg-rose-500/10 dark:text-rose-300"
-                : "bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
-            }`}
-          >
-            {notice.text}
-          </p>
+          <div className="mx-auto w-full max-w-[560px]">
+            <Notice kind={notice.kind}>{notice.text}</Notice>
+          </div>
         )}
       </div>
 
       <div className="flex flex-col gap-4">
-        <Panel title="Snake">
+        <Panel title={v.snakePanel}>
           <div className="grid grid-cols-2 gap-3">
-            <Stat label="Snake size" value={snap?.size ?? "—"} />
-            <Stat label="Best size" value={snap?.bestLength ?? "—"} />
-            <Stat label="Episodes" value={snap?.episodes ?? "—"} />
-            <Stat label="Agent steps" value={snap?.steps ?? "—"} />
+            <Stat label={v.snakeSize} value={snap?.size ?? "-"} />
+            <Stat label={v.bestSize} value={snap?.bestLength ?? "-"} />
+            <Stat label={v.episodes} value={snap?.episodes ?? "-"} />
+            <Stat label={v.agentSteps} value={snap?.steps ?? "-"} />
           </div>
-          <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-            Model: <span className="font-mono">{modelName}</span>
+          <p className="mt-3 text-xs text-muted">
+            {v.model} <span className="italic">{modelName ?? v.untrained}</span>
             {" · "}
-            {learning ? "learning" : "not learning"}
+            {learning ? v.learning : v.notLearning}
           </p>
         </Panel>
 
-        <Panel title="Q values & controls">
+        <Panel title={v.qPanel}>
           <div className="grid grid-cols-3 gap-1.5">
             <div />
             {qCell(0)}
@@ -498,28 +495,27 @@ export default function Visualizer({
               type="button"
               onClick={step}
               disabled={running}
-              title="Let the agent take one step (Enter)"
-              aria-label="Step"
-              className="flex flex-col items-center justify-center gap-0.5 rounded text-[11px] font-medium text-zinc-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500 active:bg-zinc-200 disabled:active:bg-transparent dark:text-zinc-400 dark:active:bg-zinc-800"
+              title={v.stepTitle}
+              aria-label={v.step}
+              className="flex flex-col items-center justify-center gap-0.5 rounded-sm text-xs text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:bg-paper-3 disabled:active:bg-transparent"
             >
-              <span className="size-4 rounded-full" style={{ background: COLORS.head }} />
-              Step
+              <span className="size-4 rounded-full" style={{ background: CSS_COLORS.head }} />
+              {v.step}
             </button>
             {qCell(3)}
             <div />
             {qCell(1)}
             <div />
           </div>
-          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-            While paused: click a direction or use the arrow keys to move; click the head or press
-            Enter to let the agent step.
+          <p className="mt-2 text-[13px] leading-snug text-muted">
+            {v.help}
           </p>
         </Panel>
 
-        <FoldablePanel title="Options">
+        <FoldablePanel title={v.options}>
           <div className="flex flex-col gap-3">
-            <label className="flex items-center justify-between text-sm text-zinc-700 dark:text-zinc-300">
-              Maximum FPS
+            <label className="flex items-center justify-between text-sm">
+              {v.maxFps}
               <select
                 className={selectClass}
                 value={fpsIndex}
@@ -527,13 +523,13 @@ export default function Visualizer({
               >
                 {FPS_OPTIONS.map((label, i) => (
                   <option key={label} value={i}>
-                    {label}
+                    {i === 0 ? v.unlimited : label}
                   </option>
                 ))}
               </select>
             </label>
             <Slider
-              label="Learning rate"
+              label={t.params.learningRate}
               min={0}
               max={0.5}
               step={0.05}
@@ -541,7 +537,7 @@ export default function Visualizer({
               onChange={(v) => updateParams({ learningRate: v })}
             />
             <Slider
-              label="Exploration rate"
+              label={t.params.explorationRate}
               min={0}
               max={1}
               step={0.05}
@@ -549,7 +545,7 @@ export default function Visualizer({
               onChange={(v) => updateParams({ explorationRate: v })}
             />
             <Slider
-              label="Reward decay rate"
+              label={t.params.decay}
               min={0}
               max={1}
               step={0.05}
@@ -559,10 +555,10 @@ export default function Visualizer({
           </div>
         </FoldablePanel>
 
-        <FoldablePanel title="Files">
+        <FoldablePanel title={v.files}>
           <div className="flex flex-wrap gap-2">
             <FileButton accept=".qval,.txt,text/plain" onText={loadQValues}>
-              Load Q values
+              {v.loadQValues}
             </FileButton>
             <Button
               onClick={() => {
@@ -570,10 +566,10 @@ export default function Visualizer({
                 if (model) downloadText("learn2slither.qval", formatQValues(model.agent.states));
               }}
             >
-              Save Q values
+              {v.saveQValues}
             </Button>
             <FileButton accept=".rpl,.json,application/json" onText={loadReplay}>
-              Load replay
+              {v.loadReplay}
             </FileButton>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -584,9 +580,9 @@ export default function Visualizer({
                 const preset = PRESET_MODELS.find((p) => p.name === e.target.value);
                 if (preset) loadPreset(preset.url, preset.name, "model");
               }}
-              aria-label="Load a bundled model"
+              aria-label={v.bundledModelLabel}
             >
-              <option value="">Bundled model…</option>
+              <option value="">{v.bundledModel}</option>
               {PRESET_MODELS.map((p) => (
                 <option key={p.name} value={p.name}>
                   {p.name}
@@ -600,9 +596,9 @@ export default function Visualizer({
                 const preset = PRESET_REPLAYS.find((p) => p.name === e.target.value);
                 if (preset) loadPreset(preset.url, preset.name, "replay");
               }}
-              aria-label="Load a bundled replay"
+              aria-label={v.bundledReplayLabel}
             >
-              <option value="">Bundled replay…</option>
+              <option value="">{v.bundledReplay}</option>
               {PRESET_REPLAYS.map((p) => (
                 <option key={p.name} value={p.name}>
                   {p.name}

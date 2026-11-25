@@ -1,5 +1,6 @@
 import { APPLE_CODES, type Cell, type EatResult, type Vec } from "./constants";
 import { PyRandom } from "./random";
+import { L2sError } from "../i18n/core";
 
 export interface BoardOptions {
   boardSize?: number;
@@ -94,7 +95,7 @@ export class Board {
     });
 
     if (this.snakePos.length === 0) {
-      throw new Error("Replay starting state has no snake head (H).");
+      throw new L2sError("noHead", {});
     }
 
     // Walk the body from the head by following adjacent "S" cells.

@@ -2,6 +2,7 @@
 import type { AgentParams, QTable } from "./agent";
 import { Qlearner } from "./qlearner";
 import type { TrainingResult } from "./qlearner";
+import { LEARNER_MESSAGES, type Locale } from "../i18n/core";
 
 export interface TrainRequest {
   type: "train";
@@ -12,6 +13,8 @@ export interface TrainRequest {
   noLearning: boolean;
   verbose: boolean;
   agentParams: AgentParams;
+  /** Language of the log lines. */
+  locale: Locale;
 }
 
 export type TrainResponse =
@@ -59,6 +62,7 @@ ctx.onmessage = (event: MessageEvent<TrainRequest>) => {
       verbose: req.verbose,
       agentParams: req.agentParams,
       log,
+      messages: LEARNER_MESSAGES[req.locale],
     });
 
     const result = learner.loop((episodes) => {

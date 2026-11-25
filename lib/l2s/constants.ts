@@ -3,7 +3,6 @@ export type Vec = [number, number];
 /** Action codes, in the order used for Q-table columns before state sorting. */
 export const ACTIONS = ["U", "D", "L", "R"] as const;
 export type Action = (typeof ACTIONS)[number];
-export const ACTIONS_NAMES = ["UP", "DOWN", "LEFT", "RIGHT"] as const;
 
 /** Direction vectors as [dx, dy]; index-aligned with ACTIONS. */
 export const DIRECTIONS: readonly Vec[] = [

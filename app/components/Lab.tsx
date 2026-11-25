@@ -1,19 +1,17 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useMessages } from "../i18n/context";
 import Demo from "./Demo";
 import Trainer from "./Trainer";
 import Visualizer, { type LoadRequest, type VisualizerHandle } from "./Visualizer";
 
-const TABS = [
-  { id: "demo", label: "Demo" },
-  { id: "play", label: "Visualizer" },
-  { id: "train", label: "Batch training" },
-] as const;
+const TABS = ["demo", "play", "train"] as const;
 
-type Tab = (typeof TABS)[number]["id"];
+type Tab = (typeof TABS)[number];
 
 export default function Lab() {
+  const t = useMessages();
   const [tab, setTab] = useState<Tab>("demo");
   const visualizer = useRef<VisualizerHandle>(null);
   const openInVisualizer = (request: LoadRequest) => {
@@ -23,25 +21,19 @@ export default function Lab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div
-        role="tablist"
-        aria-label="Mode"
-        className="flex w-fit gap-2"
-      >
-        {TABS.map((t) => (
+      <div role="tablist" aria-label={t.tabs.label} className="flex w-fit gap-5">
+        {TABS.map((id) => (
           <button
-            key={t.id}
+            key={id}
             role="tab"
             type="button"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={`rounded border px-3 py-1.5 text-sm font-medium ${
-              tab === t.id
-                ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                : "border-zinc-300 text-zinc-700 active:bg-zinc-200 dark:border-zinc-700 dark:text-zinc-300 dark:active:bg-zinc-800"
+            aria-selected={tab === id}
+            onClick={() => setTab(id)}
+            className={`border-b-2 pb-0.5 text-[15px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
+              tab === id ? "border-ink font-semibold" : "border-transparent text-muted active:text-ink"
             }`}
           >
-            {t.label}
+            {t.tabs[id]}
           </button>
         ))}
       </div>

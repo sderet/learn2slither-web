@@ -6,15 +6,13 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 // Plain bordered buttons: no fill and no hover effect, only a tint while pressed.
 const VARIANTS: Record<Variant, string> = {
-  primary:
-    "border-zinc-900 text-zinc-900 active:bg-zinc-200 dark:border-zinc-100 dark:text-zinc-100 dark:active:bg-zinc-800",
-  secondary:
-    "border-zinc-300 text-zinc-800 active:bg-zinc-200 dark:border-zinc-700 dark:text-zinc-200 dark:active:bg-zinc-800",
-  ghost:
-    "border-zinc-300 text-zinc-600 active:bg-zinc-200 dark:border-zinc-700 dark:text-zinc-400 dark:active:bg-zinc-800",
-  danger:
-    "border-rose-600 text-rose-700 active:bg-rose-100 dark:border-rose-400 dark:text-rose-300 dark:active:bg-rose-950",
+  primary: "border-ink text-ink active:bg-paper-3",
+  secondary: "border-rule text-ink active:bg-paper-3",
+  ghost: "border-rule text-muted active:bg-paper-3",
+  danger: "border-accent text-accent active:bg-accent-soft",
 };
+
+const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
 
 export function Button({
   variant = "secondary",
@@ -24,11 +22,14 @@ export function Button({
   return (
     <button
       type="button"
-      className={`inline-flex items-center justify-center gap-1.5 rounded border bg-transparent px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:text-zinc-400 disabled:active:bg-transparent dark:disabled:border-zinc-800 dark:disabled:text-zinc-600 ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-sm border bg-transparent px-3 py-1.5 text-sm ${FOCUS} disabled:cursor-not-allowed disabled:border-rule disabled:text-muted disabled:opacity-60 disabled:active:bg-transparent ${VARIANTS[variant]} ${className}`}
       {...props}
     />
   );
 }
+
+/** Headings of panels: small caps, like section labels in a notebook. */
+const HEADING = "text-sm font-semibold tracking-wide text-ink [font-variant-caps:all-small-caps]";
 
 export function Panel({
   title,
@@ -42,16 +43,10 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section
-      className={`rounded-md bg-zinc-100 p-4 dark:bg-zinc-900 ${className}`}
-    >
+    <section className={`rounded-sm bg-paper-2 p-4 ${className}`}>
       {(title || actions) && (
         <div className="mb-3 flex items-center justify-between gap-2">
-          {title && (
-            <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-              {title}
-            </h2>
-          )}
+          {title && <h2 className={HEADING}>{title}</h2>}
           {actions}
         </div>
       )}
@@ -71,16 +66,18 @@ export function FoldablePanel({
   defaultOpen?: boolean;
 }) {
   return (
-    <details open={defaultOpen} className="group rounded-md bg-zinc-100 dark:bg-zinc-900">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-4 text-sm font-semibold text-zinc-800 select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500 dark:text-zinc-200 [&::-webkit-details-marker]:hidden">
+    <details open={defaultOpen} className="group rounded-sm bg-paper-2">
+      <summary
+        className={`flex cursor-pointer list-none items-center justify-between gap-2 p-4 select-none ${HEADING} ${FOCUS} [&::-webkit-details-marker]:hidden`}
+      >
         {title}
-        <svg
-          viewBox="0 0 16 16"
+        <span
           aria-hidden="true"
-          className="size-4 text-zinc-500 transition-transform group-open:rotate-180 dark:text-zinc-400"
+          className="text-base leading-none text-muted [font-variant-caps:normal]"
         >
-          <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
+          <span className="group-open:hidden">+</span>
+          <span className="hidden group-open:inline">-</span>
+        </span>
       </summary>
       <div className="px-4 pb-4">{children}</div>
     </details>
@@ -105,10 +102,8 @@ export function Slider({
   return (
     <label className="block">
       <span className="flex items-baseline justify-between text-sm">
-        <span className="text-zinc-700 dark:text-zinc-300">{label}</span>
-        <span className="font-mono tabular-nums text-zinc-500 dark:text-zinc-400">
-          {value.toFixed(2)}
-        </span>
+        <span>{label}</span>
+        <span className="text-sm tabular-nums text-muted">{value.toFixed(2)}</span>
       </span>
       <input
         type="range"
@@ -117,7 +112,7 @@ export function Slider({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="mt-1 w-full accent-zinc-700 dark:accent-zinc-300"
+        className="mt-1 w-full accent-[var(--ink)]"
       />
     </label>
   );
@@ -161,14 +156,40 @@ export function FileButton({
 export function Stat({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
-      <div className="text-xs text-zinc-500 dark:text-zinc-400">{label}</div>
-      <div className="font-mono text-lg tabular-nums text-zinc-900 dark:text-zinc-100">{value}</div>
+      <div className="text-xs text-muted">{label}</div>
+      <div className="text-lg tabular-nums">{value}</div>
     </div>
   );
 }
 
+/** A figure caption under a board, in italics: "fig. 1  untrained snake ... size 3". */
+export function Caption({ label, children, aside }: { label: string; children: ReactNode; aside?: ReactNode }) {
+  return (
+    <p className="mt-2 flex items-baseline justify-between gap-3 text-[13px] italic text-muted">
+      <span>
+        <span className="not-italic text-ink">{label}</span>&ensp;{children}
+      </span>
+      {aside && <span className="shrink-0 tabular-nums">{aside}</span>}
+    </p>
+  );
+}
+
+/** A short status or error line. */
+export function Notice({ kind, children }: { kind: "info" | "error"; children: ReactNode }) {
+  return (
+    <p
+      role={kind === "error" ? "alert" : "status"}
+      className={`rounded-sm px-3 py-2 text-sm ${
+        kind === "error" ? "bg-accent-soft text-accent" : "bg-paper-2"
+      }`}
+    >
+      {children}
+    </p>
+  );
+}
+
 export const selectClass =
-  "rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100";
+  "rounded-sm border border-rule bg-paper px-2 py-1.5 text-sm text-ink";
 
 export const inputClass =
-  "w-full rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 tabular-nums dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100";
+  "w-full rounded-sm border border-rule bg-paper px-2 py-1.5 text-sm text-ink tabular-nums";

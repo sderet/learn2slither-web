@@ -9,6 +9,8 @@ const basePath = process.env.BASE_PATH?.replace(/\/+$/, "") ?? "";
 const nextConfig: NextConfig = {
   // Fully static site: `next build` writes plain HTML/CSS/JS to `out/`.
   output: "export",
+  // Write /fr as fr/index.html, which every static host serves without extra config.
+  trailingSlash: true,
   basePath,
   env: {
     // basePath is not applied to plain fetch() calls, so expose it to the client.

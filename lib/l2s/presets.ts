@@ -1,3 +1,5 @@
+import { L2sError } from "../i18n/core";
+
 /** Prefix for files in /public, so presets still load when the site lives under a sub-path. */
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -16,6 +18,6 @@ export const PRESET_REPLAYS = [
 
 export async function fetchText(url: string): Promise<string> {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Could not load ${url} (${res.status})`);
+  if (!res.ok) throw new L2sError("fetchFailed", { url, status: res.status });
   return res.text();
 }
