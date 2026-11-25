@@ -17,14 +17,14 @@ type Colors = Record<keyof typeof COLOR_VARS, string>;
 
 /** Used if the CSS variables are missing (light theme values). */
 const FALLBACK: Colors = {
-  background: "#f7f3ea",
-  grid: "#e6dece",
-  gridStrong: "#d3c8b2",
-  body: "#2f4f6f",
-  head: "#1f3850",
-  eye: "#f7f3ea",
-  green: "#4d8a3c",
-  red: "#c2452a",
+  background: "#f6f8fa",
+  grid: "#e4e8ec",
+  gridStrong: "#c9d1d9",
+  body: "#6aa7ff",
+  head: "#3b82f0",
+  eye: "#ffffff",
+  green: "#1a7f37",
+  red: "#cf222e",
 };
 
 /** CSS values for using the board colours outside the canvas (e.g. `style={{ background: CSS_COLORS.green }}`). */

@@ -9,7 +9,7 @@ const VARIANTS: Record<Variant, string> = {
   primary: "border-ink text-ink active:bg-paper-3",
   secondary: "border-rule text-ink active:bg-paper-3",
   ghost: "border-rule text-muted active:bg-paper-3",
-  danger: "border-accent text-accent active:bg-accent-soft",
+  danger: "border-danger text-danger active:bg-danger-soft",
 };
 
 const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
@@ -180,7 +180,7 @@ export function Notice({ kind, children }: { kind: "info" | "error"; children: R
     <p
       role={kind === "error" ? "alert" : "status"}
       className={`rounded-sm px-3 py-2 text-sm ${
-        kind === "error" ? "bg-accent-soft text-accent" : "bg-paper-2"
+        kind === "error" ? "bg-danger-soft text-danger" : "bg-paper-2"
       }`}
     >
       {children}

@@ -1,52 +1,56 @@
 @import "tailwindcss";
 
 /*
- * A small "lab notebook" palette: warm paper, dark ink, one rust accent.
+ * Cool, neutral palette modelled on GitHub's light and dark themes.
  * The board colours are read by lib/l2s/draw.ts, so the canvas follows dark mode too.
  */
 :root {
-  --paper: #f4efe4;
-  --paper-2: #ebe4d4;
-  --paper-3: #e0d7c3;
-  --ink: #1f1c18;
-  --muted: #6e665a;
-  --rule: #d6ccb8;
-  --accent: #b0451f;
-  --accent-soft: #f0d9cc;
-  --marker: #f3e27a;
-  --marker-ink: #4a3f06;
+  --paper: #ffffff;
+  --paper-2: #f6f8fa;
+  --paper-3: #e6eaef;
+  --ink: #1f2328;
+  --muted: #59636e;
+  --rule: #d1d9e0;
+  --accent: #0969da;
+  --accent-soft: #ddf4ff;
+  --danger: #cf222e;
+  --danger-soft: #ffebe9;
+  --marker: #fae17d;
+  --marker-ink: #4d2d00;
 
-  --board-bg: #f7f3ea;
-  --board-grid: #e6dece;
-  --board-grid-strong: #d3c8b2;
-  --board-body: #2f4f6f;
-  --board-head: #1f3850;
-  --board-eye: #f7f3ea;
-  --board-green: #4d8a3c;
-  --board-red: #c2452a;
+  --board-bg: #f6f8fa;
+  --board-grid: #e4e8ec;
+  --board-grid-strong: #c9d1d9;
+  --board-body: #6aa7ff;
+  --board-head: #3b82f0;
+  --board-eye: #ffffff;
+  --board-green: #1a7f37;
+  --board-red: #cf222e;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #1c1a17;
-    --paper-2: #262320;
-    --paper-3: #322e29;
-    --ink: #ece5d6;
-    --muted: #a39a8b;
-    --rule: #3d3832;
-    --accent: #e0774f;
-    --accent-soft: #3d2519;
-    --marker: #5c5220;
-    --marker-ink: #f5e9a8;
+    --paper: #0d1117;
+    --paper-2: #161b22;
+    --paper-3: #21262d;
+    --ink: #e6edf3;
+    --muted: #8d96a0;
+    --rule: #30363d;
+    --accent: #4493f8;
+    --accent-soft: #121d2f;
+    --danger: #f85149;
+    --danger-soft: #25171c;
+    --marker: #4b3c0d;
+    --marker-ink: #f2cc60;
 
-    --board-bg: #211f1b;
-    --board-grid: #322e28;
-    --board-grid-strong: #4a443b;
-    --board-body: #8fb3d6;
-    --board-head: #b7d0e8;
-    --board-eye: #211f1b;
-    --board-green: #79b764;
-    --board-red: #e0694b;
+    --board-bg: #161b22;
+    --board-grid: #21262d;
+    --board-grid-strong: #30363d;
+    --board-body: #58a6ff;
+    --board-head: #a5d6ff;
+    --board-eye: #0d1117;
+    --board-green: #3fb950;
+    --board-red: #f85149;
   }
 }
 
@@ -59,6 +63,8 @@
   --color-rule: var(--rule);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
   --color-marker: var(--marker);
   --color-marker-ink: var(--marker-ink);
   --color-board-bg: var(--board-bg);
