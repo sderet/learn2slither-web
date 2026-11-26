@@ -30,7 +30,7 @@ const en = {
   },
   page: {
     intro:
-      "A snake that learns to play by itself, using Q-learning. It only sees what is in line with its head. Below you can watch it learn, play with it, or train a lot of them at once.",
+      "A machine-learning project, using AI (Q-learning) to teach a Snake to play the game by itself. Below you can watch it learn, play with it, or train a lot of them at once.",
     otherLanguage: { title: "Lire cette page en français", href: "/fr" },
   },
   tabs: {
@@ -249,7 +249,7 @@ const fr: Messages = {
   },
   page: {
     intro:
-      "Un serpent qui apprend à jouer tout seul, par Q-learning. Il ne voit que ce qui est dans l’axe de sa tête. Ci-dessous, vous pouvez le regarder apprendre, jouer avec, ou en entraîner plusieurs à la fois.",
+      "Un projet d’apprentissage automatique, qui utilise l’IA (Q-learning) pour apprendre à un serpent à jouer tout seul à Snake. Ci-dessous, vous pouvez le regarder apprendre, jouer avec, ou en entraîner plusieurs à la fois.",
     otherLanguage: { title: "Read this page in English", href: "/" },
   },
   tabs: {
