@@ -249,7 +249,7 @@ const fr: Messages = {
   },
   page: {
     intro:
-      "Un projet d’apprentissage automatique, qui utilise l’IA (Q-learning) pour apprendre à un serpent à jouer tout seul à Snake. Ci-dessous, vous pouvez le regarder apprendre, jouer avec, ou en entraîner plusieurs à la fois.",
+      "Un projet de machine learning, qui utilise l’IA (Q-learning) pour apprendre à un serpent à jouer tout seul à Snake. Ci-dessous, vous pouvez le regarder apprendre, jouer avec, ou en entraîner plusieurs à la fois.",
     otherLanguage: { title: "Read this page in English", href: "/" },
   },
   tabs: {
